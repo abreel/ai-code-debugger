@@ -28,6 +28,12 @@ const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Le
 statusBar.text = "ACD: Idle";
 statusBar.show();
 
+let stopRequested = false;
+
+export function requestStop() {
+	stopRequested = true;
+}
+
 // Notification setting
 function getNotificationSetting(): "auto" | "always" | "never" {
 	const config = vscode.workspace.getConfiguration("aiCodeDebugger");
@@ -159,7 +165,7 @@ async function sendToGemini(
 // Logging helper with notification for critical errors
 function log(message: string, critical = false, sidebarProvider?: GeminiSidebarProvider) {
 	const notify = getNotificationSetting();
-	if (critical) vscode.window.showErrorMessage(message); // show notification on critical errors
+	if (critical) vscode.window.showInformationMessage(message); // only critical popups
 	if (notify === "always" || (notify === "auto" && critical)) outputChannel.show();
 	outputChannel.appendLine(message);
 	sidebarProvider?.addLog(message);
@@ -187,6 +193,12 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 
 	try {
 		for (const sourceFile of program.getSourceFiles()) {
+			if (stopRequested) {
+				const stopMsg = "🛑 TypeScript fix stopped by user.";
+				log(stopMsg, true, sidebarProvider);
+				break;
+			}
+
 			if (IGNORED_DIRS.some((dir) => sourceFile.fileName.includes(`/${dir}/`))) continue;
 
 			const diagnostics = ts.getPreEmitDiagnostics(program, sourceFile);
@@ -217,10 +229,9 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 		}
 	} catch (err: any) {
 		const errMsg = `🛑 Stopped due to Gemini error: ${err.message}`;
-		vscode.window.showErrorMessage(errMsg);
-		sidebarProvider?.addLog(errMsg);
+		log(errMsg, true, sidebarProvider);
 		statusBar.text = "ACD: Idle";
-		return; // stop processing
+		return;
 	}
 
 	const completionMsg = "🎉 All TypeScript errors processed successfully!";
@@ -291,6 +302,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// Start command
 	const runDisposable = vscode.commands.registerCommand("fixTsErrors.run", async () => {
+		stopRequested = false;
 		sidebarProvider.setRunning(true);
 		sidebarProvider.addLog("🚀 Starting TypeScript error fix...");
 		await runFix(sidebarProvider);
@@ -300,8 +312,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// Stop command
 	const stopDisposable = vscode.commands.registerCommand("fixTsErrors.stop", () => {
+		stopRequested = true; // signal to stop
 		sidebarProvider.setRunning(false);
-		sidebarProvider.addLog("🛑 TypeScript fix stopped by user.");
+		sidebarProvider.addLog("🛑 TypeScript fix stop requested by user.");
 	});
 
 	context.subscriptions.push(runDisposable, stopDisposable);

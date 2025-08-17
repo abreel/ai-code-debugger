@@ -1,6 +1,6 @@
 {
   "name": "ai-code-debugger",
-  "displayName": "Ai Code Debugger",
+  "displayName": "Ai Code Debugger (ACD)",
   "description": "A VS Code extension and npm package that automatically detects, sends, and fixes TypeScript/JavaScript errors using Google Gemini AI, with results logged in a structured JSON format.",
   "version": "0.0.1",
   "engines": {
@@ -19,7 +19,7 @@
       }
     ],
     "configuration": {
-      "title": "AI Code Debugger",
+      "title": "Ai Code Debugger (ACD)",
       "properties": {
         "gemini.apiKey": {
           "type": "string",
@@ -42,7 +42,7 @@
       "activitybar": [
         {
           "id": "geminiSidebar",
-          "title": "AI Code Debugger",
+          "title": "Ai Code Debugger (ACD)",
           "icon": "resources/icon.png"
         }
       ]

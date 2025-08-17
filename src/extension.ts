@@ -30,14 +30,14 @@ statusBar.show();
 
 // Notification setting
 function getNotificationSetting(): "auto" | "always" | "never" {
-	const config = vscode.workspace.getConfiguration("gemini");
+	const config = vscode.workspace.getConfiguration("aiCodeDebugger");
 	const setting = config.get<string>("geminiNotifications") || "auto";
 	return ["auto", "always", "never"].includes(setting) ? (setting as any) : "auto";
 }
 
 // Get Gemini API key
 function getGeminiApiKey(): string | undefined {
-	const config = vscode.workspace.getConfiguration("gemini");
+	const config = vscode.workspace.getConfiguration("aiCodeDebugger");
 	return config.get<string>("geminiApiKey") || process.env.GEMINI_API_KEY;
 }
 

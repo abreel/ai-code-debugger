@@ -25,7 +25,7 @@ const outputChannel = vscode.window.createOutputChannel("AI Code Debugger");
 
 // Status bar
 const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-statusBar.text = "Gemini: Idle";
+statusBar.text = "Ai Code Debugger: Idle";
 statusBar.show();
 
 // Notification setting
@@ -151,13 +151,13 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 	const ai = createAiClient();
 	if (!ai) return; // stop if no API key
 
-	statusBar.text = "Gemini: Running";
+	statusBar.text = "Ai Code Debugger: Running";
 
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders) {
 		vscode.window.showErrorMessage("No workspace open.");
 		log("❌ No workspace open.", true, sidebarProvider);
-		statusBar.text = "Gemini: Idle";
+		statusBar.text = "Ai Code Debugger: Idle";
 		return;
 	}
 
@@ -197,11 +197,11 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 		}
 	} catch (err) {
 		sidebarProvider?.addLog("🛑 Stopped due to Gemini error.");
-		statusBar.text = "Gemini: Idle";
+		statusBar.text = "Ai Code Debugger: Idle";
 		return; // stop processing
 	}
 
-	statusBar.text = "Gemini: Idle";
+	statusBar.text = "Ai Code Debugger: Idle";
 }
 
 // Sidebar provider

@@ -31,27 +31,27 @@ statusBar.show();
 // Notification setting
 function getNotificationSetting(): "auto" | "always" | "never" {
 	const config = vscode.workspace.getConfiguration("gemini");
-	const setting = config.get<string>("notifications") || "auto";
+	const setting = config.get<string>("geminiNotifications") || "auto";
 	return ["auto", "always", "never"].includes(setting) ? (setting as any) : "auto";
 }
 
 // Get Gemini API key
 function getGeminiApiKey(): string | undefined {
 	const config = vscode.workspace.getConfiguration("gemini");
-	return config.get<string>("apiKey") || process.env.GEMINI_API_KEY;
+	return config.get<string>("geminiApiKey") || process.env.GEMINI_API_KEY;
 }
 
 // Create AI client, stop immediately if no API key
 function createAiClient(): GoogleGenerativeAI | null {
-	const apiKey = getGeminiApiKey();
-	if (!apiKey) {
+	const geminiApiKey = getGeminiApiKey();
+	if (!geminiApiKey) {
 		vscode.window.showErrorMessage(
-			"❌ Gemini API key not set. Please configure 'gemini.apiKey' in settings."
+			"❌ Gemini API key not set. Please configure 'gemini.geminiApiKey' in settings."
 		);
 		log("❌ Gemini API key not set. Stopping execution.", true);
 		return null;
 	}
-	return new GoogleGenerativeAI(apiKey);
+	return new GoogleGenerativeAI(geminiApiKey);
 }
 
 // Recursively get files

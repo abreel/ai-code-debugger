@@ -21,12 +21,12 @@
     "configuration": {
       "title": "Ai Code Debugger (ACD)",
       "properties": {
-        "gemini.apiKey": {
+        "aiCodeDebugger.geminiApiKey": {
           "type": "string",
           "default": "",
           "description": "Your Gemini API Key used for debugging with Gemini models."
         },
-        "gemini.notifications": {
+        "aiCodeDebugger.geminiNotifications": {
           "type": "string",
           "enum": [
             "auto",

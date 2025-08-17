@@ -35,14 +35,6 @@ function getNotificationSetting(): "auto" | "always" | "never" {
 	return ["auto", "always", "never"].includes(setting) ? (setting as any) : "auto";
 }
 
-// Logging helper
-function log(message: string, critical = false, sidebarProvider?: GeminiSidebarProvider) {
-	const notify = getNotificationSetting();
-	if (notify === "always" || (notify === "auto" && critical)) outputChannel.show();
-	outputChannel.appendLine(message);
-	sidebarProvider?.addLog(message);
-}
-
 // Get Gemini API key
 function getGeminiApiKey(): string | undefined {
 	const config = vscode.workspace.getConfiguration("gemini");
@@ -146,6 +138,15 @@ async function sendToGemini(
 	}
 }
 
+// Logging helper with notification for critical errors
+function log(message: string, critical = false, sidebarProvider?: GeminiSidebarProvider) {
+	const notify = getNotificationSetting();
+	if (critical) vscode.window.showErrorMessage(message); // show notification on critical errors
+	if (notify === "always" || (notify === "auto" && critical)) outputChannel.show();
+	outputChannel.appendLine(message);
+	sidebarProvider?.addLog(message);
+}
+
 // Main run function
 async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 	const ai = createAiClient();
@@ -155,8 +156,9 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders) {
-		vscode.window.showErrorMessage("No workspace open.");
-		log("❌ No workspace open.", true, sidebarProvider);
+		const msg = "❌ No workspace open.";
+		vscode.window.showErrorMessage(msg);
+		log(msg, true, sidebarProvider);
 		statusBar.text = "ACD: Idle";
 		return;
 	}
@@ -195,12 +197,17 @@ async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 
 			await sendToGemini(ai, sourceFile.fileName, errors, sidebarProvider);
 		}
-	} catch (err) {
-		sidebarProvider?.addLog("🛑 Stopped due to Gemini error.");
+	} catch (err: any) {
+		const errMsg = `🛑 Stopped due to Gemini error: ${err.message}`;
+		vscode.window.showErrorMessage(errMsg);
+		sidebarProvider?.addLog(errMsg);
 		statusBar.text = "ACD: Idle";
 		return; // stop processing
 	}
 
+	const completionMsg = "🎉 All TypeScript errors processed successfully!";
+	vscode.window.showInformationMessage(completionMsg);
+	log(completionMsg, false, sidebarProvider);
 	statusBar.text = "ACD: Idle";
 }
 

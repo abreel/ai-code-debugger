@@ -15,7 +15,7 @@
     "commands": [
       {
         "command": "fixTsErrors.run",
-        "title": "Fix TypeScript Errors with Gemini"
+        "title": "ACD: Fix TypeScript Errors with Gemini"
       }
     ],
     "configuration": {

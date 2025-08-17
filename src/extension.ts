@@ -70,79 +70,89 @@ function getAllFiles(dir: string, exts: string[] = [".ts", ".tsx"], files: strin
 }
 
 function delay(ms: number) {
-  return new Promise(res => setTimeout(res, ms));
+	return new Promise(res => setTimeout(res, ms));
 }
 
 // Send errors to Gemini AI
 async function sendToGemini(
-  ai: GoogleGenerativeAI,
-  file: string,
-  errors: TsError[],
-  sidebarProvider?: GeminiSidebarProvider,
-  maxRetries = 3,
-  throttleMs = 1000 // delay between requests
+	ai: GoogleGenerativeAI,
+	file: string,
+	errors: TsError[],
+	sidebarProvider?: GeminiSidebarProvider,
+	maxRetries = 3,
+	throttleMs = 1000 // delay between requests
 ): Promise<void> {
-  const limitedErrors = errors.slice(0, MAX_ERRORS_PER_REQUEST);
-  const errorText = limitedErrors.map(e => `${e.code} at ${e.line}:${e.column} - ${e.message}`).join("\n");
+	const limitedErrors = errors.slice(0, MAX_ERRORS_PER_REQUEST);
+	const errorText = limitedErrors.map(e => `${e.code} at ${e.line}:${e.column} - ${e.message}`).join("\n");
 
-  if (errorText.length > MAX_CONTENT_LENGTH) {
-    log(`⏭️ Skipping ${file} - content too large (${errorText.length} chars)`, true, sidebarProvider);
-    return;
-  }
+	if (errorText.length > MAX_CONTENT_LENGTH) {
+		log(`⏭️ Skipping ${file} - content too large (${errorText.length} chars)`, true, sidebarProvider);
+		return;
+	}
 
-  log(`⏳ Sending ${file} to Gemini...`, true, sidebarProvider);
-  const contents = `File: ${file}\nErrors:\n${errorText}`;
+	log(`⏳ Sending ${file} to Gemini...`, true, sidebarProvider);
+	const contents = `File: ${file}\nErrors:\n${errorText}`;
 
-  let attempt = 0;
+	let attempt = 0;
 
-  while (attempt <= maxRetries) {
-    try {
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: `Return JSON only:\n${contents}` }] }]
-      });
+	while (attempt <= maxRetries) {
+		try {
+			const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+			const result = await model.generateContent({
+				contents: [{ role: "user", parts: [{ text: `Return JSON only:\n${contents}` }] }]
+			});
 
-      const responseText = result.response.text();
+			const responseText = result.response.text();
 
-      if (!responseText || responseText.toLowerCase().includes("error")) {
-        throw new Error(`Gemini returned an error for ${file}: ${responseText}`);
-      }
+			let parsed: { updatedCode?: string; explanation?: string; errors?: any[] } = {};
 
-      let parsed: { updatedCode?: string; explanation?: string } = {};
-      try { parsed = JSON.parse(responseText); }
-      catch {
-        const cleaned = responseText.replace(/```json\s*/, "").replace(/```$/, "").trim();
-        try { parsed = JSON.parse(cleaned); } 
-        catch (err) { log(`⚠️ Failed to parse JSON for ${file}: ${err}`, true, sidebarProvider); }
-      }
+			try {
+				parsed = JSON.parse(responseText);
+			} catch {
+				const cleaned = responseText.replace(/```json\s*/, "").replace(/```$/, "").trim();
+				try { parsed = JSON.parse(cleaned); }
+				catch (err) {
+					log(`⚠️ Failed to parse JSON for ${file}: ${err}`, true, sidebarProvider);
+				}
+			}
 
-      if (parsed.updatedCode) {
-        fs.writeFileSync(file, parsed.updatedCode, "utf8");
-        vscode.window.showInformationMessage(`✅ Updated file: ${file}`);
-        log(`✅ Updated file: ${file}`, true, sidebarProvider);
-      } else {
-        log(`⚠️ No update for: ${file}`, true, sidebarProvider);
-      }
+			// Only throw if JSON is empty or completely invalid
+			if (!parsed) {
+				throw new Error(`Gemini returned invalid JSON for ${file}: ${responseText}`);
+			}
 
-      // Throttle between requests
-      await delay(throttleMs);
-      return; // success, exit loop
+			// Handle errors reported by Gemini without throwing
+			if (parsed.errors && parsed.errors.length > 0) {
+				log(`⚠️ Gemini reported TypeScript errors for ${file}:\n${JSON.stringify(parsed.errors, null, 2)}`, true, sidebarProvider);
+			}
 
-    } catch (err: any) {
-      attempt++;
-      const waitTime = Math.pow(2, attempt) * 1000; // exponential backoff
-      const isRateLimit = err.message.toLowerCase().includes("rate limit");
+			if (parsed.updatedCode) {
+				fs.writeFileSync(file, parsed.updatedCode, "utf8");
+				vscode.window.showInformationMessage(`✅ Updated file: ${file}`);
+				log(`✅ Updated file: ${file}`, true, sidebarProvider);
+			} else {
+				log(`⚠️ No update for: ${file}`, true, sidebarProvider);
+			}
 
-      log(`⚠️ Gemini error for ${file}: ${err.message} (attempt ${attempt}/${maxRetries})`, true, sidebarProvider);
+			// Throttle between requests
+			await delay(throttleMs);
+			return; // success, exit loop
 
-      if (!isRateLimit || attempt > maxRetries) {
-        throw err; // stop on critical errors
-      }
+		} catch (err: any) {
+			attempt++;
+			const waitTime = Math.pow(2, attempt) * 1000; // exponential backoff
+			const isRateLimit = err.message.toLowerCase().includes("rate limit");
 
-      log(`⏳ Rate limit hit. Retrying ${file} after ${waitTime / 1000}s...`, true, sidebarProvider);
-      await delay(waitTime);
-    }
-  }
+			log(`⚠️ Gemini error for ${file}: ${err.message} (attempt ${attempt}/${maxRetries})`, true, sidebarProvider);
+
+			if (!isRateLimit || attempt > maxRetries) {
+				throw err; // stop on critical errors
+			}
+
+			log(`⏳ Rate limit hit. Retrying ${file} after ${waitTime / 1000}s...`, true, sidebarProvider);
+			await delay(waitTime);
+		}
+	}
 }
 
 

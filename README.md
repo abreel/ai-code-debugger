@@ -1,4 +1,4 @@
-# Gemini Debugger (AI Code Debugger)
+# AI Code Debugger (ACD)
 
 A **VS Code extension** and **Node.js utility** that automatically detects TypeScript/JavaScript errors, sends them to **Google Gemini AI** for analysis, and logs structured results (including suggested fixes) into a JSON file.
 

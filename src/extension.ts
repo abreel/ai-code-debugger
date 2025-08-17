@@ -92,11 +92,11 @@ async function sendToGemini(
 	const errorText = limitedErrors.map(e => `${e.code} at ${e.line}:${e.column} - ${e.message}`).join("\n");
 
 	if (errorText.length > MAX_CONTENT_LENGTH) {
-		log(`⏭️ Skipping ${file} - content too large (${errorText.length} chars)`, true, sidebarProvider);
+		log(`⏭️ Skipping ${file} - content too large (${errorText.length} chars)`, false, sidebarProvider);
 		return;
 	}
 
-	log(`⏳ Sending ${file} to Gemini...`, true, sidebarProvider);
+	log(`⏳ Sending ${file} to Gemini...`, false, sidebarProvider);
 	const contents = `File: ${file}\nErrors:\n${errorText}`;
 
 	let attempt = 0;
@@ -118,7 +118,7 @@ async function sendToGemini(
 				const cleaned = responseText.replace(/```json\s*/, "").replace(/```$/, "").trim();
 				try { parsed = JSON.parse(cleaned); }
 				catch (err) {
-					log(`⚠️ Failed to parse JSON for ${file}: ${err}`, true, sidebarProvider);
+					log(`⚠️ Failed to parse JSON for ${file}: ${err}`, false, sidebarProvider);
 				}
 			}
 
@@ -129,13 +129,13 @@ async function sendToGemini(
 
 			// Handle errors reported by Gemini without throwing
 			if (parsed.errors && parsed.errors.length > 0) {
-				log(`⚠️ Gemini reported TypeScript errors for ${file}:\n${JSON.stringify(parsed.errors, null, 2)}`, true, sidebarProvider);
+				log(`⚠️ Gemini reported TypeScript errors for ${file}:\n${JSON.stringify(parsed.errors, null, 2)}`, false, sidebarProvider);
 			}
 
 			if (parsed.updatedCode) {
 				fs.writeFileSync(file, parsed.updatedCode, "utf8");
 				vscode.window.showInformationMessage(`✅ Updated file: ${file}`);
-				log(`✅ Updated file: ${file}`, true, sidebarProvider);
+				log(`✅ Updated file: ${file}`, false, sidebarProvider);
 			} else {
 				log(`⚠️ No update for: ${file}`, true, sidebarProvider);
 			}
@@ -149,13 +149,13 @@ async function sendToGemini(
 			const waitTime = Math.pow(2, attempt) * 1000; // exponential backoff
 			const isRateLimit = err.message.toLowerCase().includes("rate limit");
 
-			log(`⚠️ Gemini error for ${file}: ${err.message} (attempt ${attempt}/${maxRetries})`, true, sidebarProvider);
+			log(`⚠️ Gemini error for ${file}: ${err.message} (attempt ${attempt}/${maxRetries})`, false, sidebarProvider);
 
 			if (!isRateLimit || attempt > maxRetries) {
 				throw err; // stop on critical errors
 			}
 
-			log(`⏳ Rate limit hit. Retrying ${file} after ${waitTime / 1000}s...`, true, sidebarProvider);
+			log(`⏳ Rate limit hit. Retrying ${file} after ${waitTime / 1000}s...`, false, sidebarProvider);
 			await delay(waitTime);
 		}
 	}

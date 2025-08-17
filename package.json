@@ -19,14 +19,41 @@
       }
     ],
     "configuration": {
-      "title": "Gemini Debugger",
+      "title": "AI Code Debugger",
       "properties": {
         "gemini.apiKey": {
           "type": "string",
           "default": "",
           "description": "Your Gemini API Key used for debugging with Gemini models."
+        },
+        "gemini.notifications": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto",
+          "description": "Control notifications and auto-open output channel: 'auto', 'always', 'never'."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "geminiSidebar",
+          "title": "AI Code Debugger",
+          "icon": "resources/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "geminiSidebar": [
+        {
+          "id": "geminiLogs",
+          "name": "Logs"
+        }
+      ]
     }
   },
   "scripts": {
@@ -41,7 +68,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "dev": "npm run compile && npm run watch"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

@@ -21,12 +21,12 @@ interface TsError {
 	content: string;
 }
 
+// ✅ Create a dedicated Output Channel
+const outputChannel = vscode.window.createOutputChannel("AI Code Debugger");
+
 function getGeminiApiKey(): string | undefined {
-	// ✅ First check VS Code config
 	const config = vscode.workspace.getConfiguration("gemini");
 	const settingKey = config.get<string>("apiKey");
-
-	// ✅ Fallback to .env for dev
 	return settingKey || process.env.GEMINI_API_KEY;
 }
 
@@ -36,6 +36,7 @@ function createAiClient(): GoogleGenerativeAI | null {
 		vscode.window.showErrorMessage(
 			"❌ Gemini API key not set. Please configure 'gemini.apiKey' in settings."
 		);
+		outputChannel.appendLine("❌ Gemini API key not set.");
 		return null;
 	}
 	return new GoogleGenerativeAI(apiKey);
@@ -73,8 +74,11 @@ async function sendToGemini(file: string, errors: TsError[]): Promise<void> {
 
 	if (errorText.length > MAX_CONTENT_LENGTH) {
 		vscode.window.showWarningMessage(`⏭️ Skipping ${file} (too large)`);
+		outputChannel.appendLine(`⏭️ Skipping ${file} - content too large (${errorText.length} chars)`);
 		return;
 	}
+
+	outputChannel.appendLine(`⏳ Sending ${file} to Gemini...`);
 
 	const contents = `File: ${file}\nErrors:\n${errorText}`;
 
@@ -105,33 +109,43 @@ ${contents}
 		});
 
 		const responseText = result.response.text();
+		outputChannel.appendLine(`Gemini response for ${file}:\n${responseText}`);
+
 		let parsed: { updatedCode?: string; explanation?: string } = {};
 
 		try {
 			parsed = JSON.parse(responseText);
 		} catch {
-			const cleaned = responseText
-				.replace(/```json\s*/, "")
-				.replace(/```$/, "")
-				.trim();
-			parsed = JSON.parse(cleaned);
+			const cleaned = responseText.replace(/```json\s*/, "").replace(/```$/, "").trim();
+			try {
+				parsed = JSON.parse(cleaned);
+			} catch (err) {
+				outputChannel.appendLine(`⚠️ Failed to parse Gemini JSON for ${file}: ${err}`);
+			}
 		}
 
 		if (parsed.updatedCode) {
 			fs.writeFileSync(file, parsed.updatedCode, "utf8");
 			vscode.window.showInformationMessage(`✅ Updated file: ${file}`);
+			outputChannel.appendLine(`✅ Updated file: ${file}`);
 		} else {
 			vscode.window.showWarningMessage(`⚠️ No update for: ${file}`);
+			outputChannel.appendLine(`⚠️ No update for: ${file}`);
 		}
 	} catch (err: any) {
 		vscode.window.showErrorMessage(`❌ Gemini error: ${err.message}`);
+		outputChannel.appendLine(`❌ Gemini error for ${file}: ${err.message}`);
 	}
 }
 
 async function runFix(): Promise<void> {
+	outputChannel.show();
+	outputChannel.appendLine("🚀 Starting TypeScript error fix...");
+
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders) {
 		vscode.window.showErrorMessage("No workspace open.");
+		outputChannel.appendLine("❌ No workspace open.");
 		return;
 	}
 
@@ -140,10 +154,7 @@ async function runFix(): Promise<void> {
 	const program = ts.createProgram(files, { noEmit: true });
 
 	for (const sourceFile of program.getSourceFiles()) {
-		if (
-			IGNORED_DIRS.some((dir) => sourceFile.fileName.includes(`/${dir}/`))
-		)
-			continue;
+		if (IGNORED_DIRS.some((dir) => sourceFile.fileName.includes(`/${dir}/`))) continue;
 
 		const diagnostics = ts.getPreEmitDiagnostics(program, sourceFile);
 		if (!diagnostics.length) continue;
@@ -159,9 +170,7 @@ async function runFix(): Promise<void> {
 				};
 			}
 
-			const { line, character } = diag.file.getLineAndCharacterOfPosition(
-				diag.start
-			);
+			const { line, character } = diag.file.getLineAndCharacterOfPosition(diag.start);
 			return {
 				line: line + 1,
 				column: character + 1,
@@ -174,16 +183,12 @@ async function runFix(): Promise<void> {
 		await sendToGemini(sourceFile.fileName, errors);
 	}
 
-	vscode.window.showInformationMessage(
-		"✅ Finished processing TypeScript errors."
-	);
+	vscode.window.showInformationMessage("✅ Finished processing TypeScript errors.");
+	outputChannel.appendLine("✅ Finished processing TypeScript errors.");
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-	const disposable = vscode.commands.registerCommand(
-		"fixTsErrors.run",
-		runFix
-	);
+	const disposable = vscode.commands.registerCommand("fixTsErrors.run", runFix);
 	context.subscriptions.push(disposable);
 }
 

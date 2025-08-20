@@ -17,35 +17,53 @@
         "command": "fixTsErrors.run",
         "title": "ACD: Fix TypeScript Errors with Gemini",
         "icon": {
-          "light": "resources/icons/run.svg",
-          "dark": "resources/icons/run.svg"
+          "light": "resources/icons/start.png",
+          "dark": "resources/icons/start.png"
         }
       },
       {
         "command": "fixTsErrors.stop",
         "title": "ACD: Stop Debugging",
         "icon": {
-          "light": "resources/icons/stop.svg",
-          "dark": "resources/icons/stop.svg"
+          "light": "resources/icons/stop.png",
+          "dark": "resources/icons/stop.png"
         }
       },
       {
         "command": "fixTsErrors.clearLogs",
         "title": "ACD: Clear Logs",
         "icon": {
-          "light": "resources/icons/clear.svg",
-          "dark": "resources/icons/clear.svg"
+          "light": "resources/icons/clear.png",
+          "dark": "resources/icons/clear.png"
         }
       },
       {
         "command": "fixTsErrors.exportLogs",
         "title": "ACD: Export Logs",
         "icon": {
-          "light": "resources/icons/export.svg",
-          "dark": "resources/icons/export.svg"
+          "light": "resources/icons/export.png",
+          "dark": "resources/icons/export.png"
         }
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "geminiSidebar",
+          "title": "Ai Code Debugger (ACD)",
+          "icon": "resources/icons/sidebar.png"
+        }
+      ]
+    },
+    "views": {
+      "geminiSidebar": [
+        {
+          "id": "geminiLogs",
+          "icon": "resources/icons/sidebar.png",
+          "name": "Logs"
+        }
+      ]
+    },
     "menus": {
       "view/title": [
         {

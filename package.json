@@ -9,7 +9,13 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:fixTsErrors.run",
+    "onCommand:fixTsErrors.stop",
+    "onCommand:fixTsErrors.clearLogs",
+    "onCommand:fixTsErrors.exportLogs",
+    "onView:geminiLogs"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -59,7 +65,6 @@
       "geminiSidebar": [
         {
           "id": "geminiLogs",
-          "icon": "resources/icons/sidebar.png",
           "name": "Logs"
         }
       ]

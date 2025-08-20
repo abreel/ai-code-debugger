@@ -4,118 +4,137 @@ import * as vscode from "vscode";
 import { showFullPath, logFilePath } from "./config";
 import { TsError } from "./TsError";
 
-// Small helper for creating items
-function makeItem(
-  label: string,
-  icon: string,
-  collapsible: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None,
-  command?: vscode.Command
-): vscode.TreeItem {
-  const item = new vscode.TreeItem(label, collapsible);
-  item.iconPath = new vscode.ThemeIcon(icon);
-  if (command) item.command = command;
-  return item;
-}
-
+// ---------------------------
+// Sidebar Provider (Improved)
+// ---------------------------
 export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined>();
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+	private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined> = new vscode.EventEmitter();
+	readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> = this._onDidChangeTreeData.event;
 
-  private logs: string[] = [];
-  private running = false;
+	private logs: string[] = [];
+	private running = false;
 
-  addLog(msg: string) {
-    this.logs.push(msg);
-    this.refresh();
-  }
+	addLog(message: string) {
+		this.logs.push(message);
+		this.refresh();
+	}
 
-  setRunning(state: boolean) {
-    this.running = state;
-    this.refresh();
-  }
+	setRunning(state: boolean) {
+		this.running = state;
+		this.refresh();
+	}
 
-  getTreeItem(element: vscode.TreeItem) {
-    return element;
-  }
+	getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+		return element;
+	}
 
-  getChildren(element?: vscode.TreeItem): vscode.TreeItem[] {
-    if (!element) {
-      // Root sections
-      return [
-        makeItem("▶ Controls", "gear", vscode.TreeItemCollapsibleState.Expanded),
-        makeItem("📊 Summary", "graph", vscode.TreeItemCollapsibleState.Expanded),
-        makeItem("📂 Errors by File", "folder", vscode.TreeItemCollapsibleState.Expanded),
-      ];
-    }
+	getChildren(element?: vscode.TreeItem): vscode.TreeItem[] {
+		const items: vscode.TreeItem[] = [];
 
-    // Controls
-    if (element.label === "▶ Controls") {
-      return [
-        makeItem(this.running ? "Stop Fix" : "Start Fix", this.running ? "debug-stop" : "play-circle", vscode.TreeItemCollapsibleState.None, {
-          command: this.running ? "fixTsErrors.stop" : "fixTsErrors.run",
-          title: "Toggle Run",
-        }),
-        makeItem("🗑️ Clear Logs", "trash", vscode.TreeItemCollapsibleState.None, { command: "fixTsErrors.clearLogs", title: "Clear Logs" }),
-        makeItem("📤 Export Logs", "export", vscode.TreeItemCollapsibleState.None, { command: "fixTsErrors.exportLogs", title: "Export Logs" }),
-        makeItem(showFullPath ? "Hide Full Paths" : "Show Full Paths", "symbol-file", vscode.TreeItemCollapsibleState.None, {
-          command: "fixTsErrors.togglePathDisplay",
-          title: "Toggle Path Display",
-        }),
-      ];
-    }
+		// Root level
+		if (!element) {
+			// --- Controls ---
+			const controls = new vscode.TreeItem("▶ Controls", vscode.TreeItemCollapsibleState.Expanded);
+			controls.iconPath = new vscode.ThemeIcon("gear");
+			(controls as any).controls = true;
+			items.push(controls);
 
-    // Summary
-    if (element.label === "📊 Summary") {
-      if (!fs.existsSync(logFilePath)) return [];
-      const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
-      const filesCount = new Set(data.map(e => e.file)).size;
-      const fixed = data.filter(e => e.fixed).length;
+			// --- Summary ---
+			const summary = new vscode.TreeItem("📊 Summary", vscode.TreeItemCollapsibleState.Expanded);
+			summary.iconPath = new vscode.ThemeIcon("graph");
+			(summary as any).summary = true;
+			items.push(summary);
 
-      return [
-        makeItem(`Files: ${filesCount}`, "file"),
-        makeItem(`Total Errors: ${data.length}`, "warning"),
-        makeItem(`✅ Fixed: ${fixed}`, "check"),
-        makeItem(`⚠️ Unfixed: ${data.length - fixed}`, "error"),
-      ];
-    }
+			// --- Files with Errors ---
+			const filesGroup = new vscode.TreeItem("📂 Errors by File", vscode.TreeItemCollapsibleState.Expanded);
+			filesGroup.iconPath = new vscode.ThemeIcon("folder");
+			(filesGroup as any).filesGroup = true;
+			items.push(filesGroup);
+		}
 
-    // Errors by file
-    if (element.label === "📂 Errors by File") {
-      if (!fs.existsSync(logFilePath)) return [];
-      const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+		// Controls section
+		else if ((element as any).controls) {
+			const runItem = new vscode.TreeItem(this.running ? "Stop Fix" : "Start Fix", vscode.TreeItemCollapsibleState.None);
+			runItem.iconPath = new vscode.ThemeIcon(this.running ? "debug-stop" : "play-circle");
+			runItem.command = { command: this.running ? "fixTsErrors.stop" : "fixTsErrors.run", title: "Toggle Run" };
 
-      const grouped = new Map<string, TsError[]>();
-      data.forEach(err => {
-        if (!err.file) return;
-        if (!grouped.has(err.file)) grouped.set(err.file, []);
-        grouped.get(err.file)!.push(err);
-      });
+			const clearItem = new vscode.TreeItem("🗑️ Clear Logs", vscode.TreeItemCollapsibleState.None);
+			clearItem.command = { command: "fixTsErrors.clearLogs", title: "Clear Logs" };
+			clearItem.iconPath = new vscode.ThemeIcon("trash");
 
-      return [...grouped.entries()].map(([file, errs]) => {
-        const label = showFullPath ? file : path.basename(file);
-        const fileItem = makeItem(label, "file-code", vscode.TreeItemCollapsibleState.Collapsed);
-        (fileItem as any).errors = errs;
-        fileItem.tooltip = file;
-        return fileItem;
-      });
-    }
+			const exportItem = new vscode.TreeItem("📤 Export Logs (Markdown)", vscode.TreeItemCollapsibleState.None);
+			exportItem.command = { command: "fixTsErrors.exportLogs", title: "Export Logs" };
+			exportItem.iconPath = new vscode.ThemeIcon("export");
 
-    // Errors inside a file
-    if ((element as any).errors) {
-      const errs: TsError[] = (element as any).errors;
-      return errs.map(e =>
-        makeItem(`${e.code} @ ${e.line}:${e.column} - ${e.fixed ? "✅" : "⚠️"}`, e.fixed ? "check" : "error", vscode.TreeItemCollapsibleState.None, {
-          command: "fixTsErrors.openError",
-          title: "Open Error",
-          arguments: [e],
-        })
-      );
-    }
+			const togglePathItem = new vscode.TreeItem(showFullPath ? "Hide Full Paths" : "Show Full Paths", vscode.TreeItemCollapsibleState.None);
+			togglePathItem.command = { command: "fixTsErrors.togglePathDisplay", title: "Toggle Path Display" };
+			togglePathItem.iconPath = new vscode.ThemeIcon("symbol-file");
 
-    return [];
-  }
+			return [runItem, clearItem, exportItem, togglePathItem];
+		}
 
-  refresh() {
-    this._onDidChangeTreeData.fire(undefined);
-  }
+		// Summary section
+		else if ((element as any).summary) {
+			if (!fs.existsSync(logFilePath)) return [];
+			const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+
+			const filesCount = new Set(data.map(e => e.file)).size;
+			const fixedCount = data.filter(e => e.fixed).length;
+			const unfixedCount = data.length - fixedCount;
+
+			return [
+				new vscode.TreeItem(`Files: ${filesCount}`),
+				new vscode.TreeItem(`Total Errors: ${data.length}`),
+				new vscode.TreeItem(`✅ Fixed: ${fixedCount}`),
+				new vscode.TreeItem(`⚠️ Unfixed: ${unfixedCount}`)
+			];
+		}
+
+		// Errors by file section
+		else if ((element as any).filesGroup) {
+			if (!fs.existsSync(logFilePath)) return [];
+			const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+
+			const grouped = new Map<string, TsError[]>();
+			data.forEach(err => {
+				if (!err.file) return;
+				if (!grouped.has(err.file)) grouped.set(err.file, []);
+				grouped.get(err.file)!.push(err);
+			});
+
+			const fileItems: vscode.TreeItem[] = [];
+			for (const [file, errs] of grouped) {
+				const label = showFullPath ? file : path.basename(file);
+				const fileItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
+				fileItem.tooltip = file;
+				fileItem.iconPath = new vscode.ThemeIcon("file-code");
+				(fileItem as any).errors = errs;
+				fileItems.push(fileItem);
+			}
+			return fileItems;
+		}
+
+		// Errors inside a file
+		else if ((element as any).errors) {
+			const errs: TsError[] = (element as any).errors;
+			return errs.map(e => {
+				const label = `${e.code} @ ${e.line}:${e.column} - ${e.fixed ? "✅" : "⚠️"}`;
+				const errorItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
+				errorItem.tooltip = e.message;
+				errorItem.iconPath = new vscode.ThemeIcon(e.fixed ? "check" : "error");
+				errorItem.command = {
+					command: "fixTsErrors.openError",
+					title: "Open Error",
+					arguments: [e]
+				};
+				return errorItem;
+			});
+		}
+
+		return items;
+	}
+
+	refresh() {
+		this._onDidChangeTreeData.fire(undefined);
+	}
 }

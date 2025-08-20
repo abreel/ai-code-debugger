@@ -3,6 +3,18 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { showFullPath, logFilePath } from "./config";
 import { TsError } from "./TsError";
+function readErrors(): TsError[] {
+  try {
+    if (!fs.existsSync(logFilePath)) {return [];}
+    const raw = fs.readFileSync(logFilePath, "utf8").trim();
+    if (!raw) {return [];}
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("Failed to parse log file:", err);
+    return [];
+  }
+}
+
 
 // ---------------------------
 // Sidebar Provider (With Dividers)
@@ -69,8 +81,8 @@ export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.Tre
 
 		// Summary section
 		else if ((element as any).summary) {
-			if (!fs.existsSync(logFilePath)) return [];
-			const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+			if (!fs.existsSync(logFilePath)) {return [];}
+			const data: TsError[] = readErrors();
 
 			const filesCount = new Set(data.map(e => e.file)).size;
 			const fixedCount = data.filter(e => e.fixed).length;
@@ -86,13 +98,13 @@ export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.Tre
 
 		// Errors by file section
 		else if ((element as any).filesGroup) {
-			if (!fs.existsSync(logFilePath)) return [];
-			const data: TsError[] = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+			if (!fs.existsSync(logFilePath)) {return [];}
+			const data: TsError[] = readErrors();
 
 			const grouped = new Map<string, TsError[]>();
 			data.forEach(err => {
-				if (!err.file) return;
-				if (!grouped.has(err.file)) grouped.set(err.file, []);
+				if (!err.file) {return;}
+				if (!grouped.has(err.file)) {grouped.set(err.file, []);}
 				grouped.get(err.file)!.push(err);
 			});
 

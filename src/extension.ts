@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as ts from "typescript";
+import ts from "typescript";
 import * as fs from "fs";
 import { GeminiSidebarProvider } from "./GeminiSidebarProvider";
 import { log } from "./log";
@@ -8,13 +8,16 @@ import { getAllFiles } from "./getAllFiles";
 import { sendToGemini } from "./sendToGemini";
 import { TsError } from "./TsError";
 import { stopRequested, statusBar, IGNORED_DIRS } from "./config";
+import { loadTsConfig } from "./loadTsConfig";
+import { createProgramFromTsConfig } from "./tsconfigLoader";
+import path from "path";
 
 
 
 // Main run function
 export async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<void> {
 	const ai = createAiClient();
-	if (!ai) {return;}
+	if (!ai) { return; }
 
 	statusBar.text = "ACD: Running";
 
@@ -28,8 +31,17 @@ export async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<v
 	}
 
 	const rootPath = workspaceFolders[0].uri.fsPath;
-	const files = getAllFiles(rootPath);
-	const program = ts.createProgram(files, { noEmit: true });
+	console.log("root path: ", rootPath);
+
+	// const files = getAllFiles(rootPath);
+	// const tsConfig = loadTsConfig(rootPath);
+	// const program = ts.createProgram(tsConfig.fileNames, tsConfig.options);
+
+	const tsconfigPath = path.join(rootPath, "tsconfig.json");
+	const program = createProgramFromTsConfig(tsconfigPath);
+	console.log("CompilerOptions.libs:", program.getCompilerOptions().lib);
+
+
 
 	try {
 		for (const sourceFile of program.getSourceFiles()) {
@@ -39,10 +51,10 @@ export async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<v
 				break;
 			}
 
-			if (IGNORED_DIRS.some((dir) => sourceFile.fileName.includes(`/${dir}/`))) {continue;}
+			if (IGNORED_DIRS.some((dir) => sourceFile.fileName.includes(`/${dir}/`))) { continue; }
 
 			const diagnostics = ts.getPreEmitDiagnostics(program, sourceFile);
-			if (!diagnostics.length) {continue;}
+			if (!diagnostics.length) { continue; }
 
 			const errors: TsError[] = diagnostics.map((diag) => {
 				if (!diag.file || diag.start === undefined) {
@@ -66,8 +78,9 @@ export async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<v
 					file: diag.file.fileName
 				};
 			});
+			console.log("Errors: ", errors)
 
-			await sendToGemini(ai, sourceFile.fileName, errors, sidebarProvider);
+			// await sendToGemini(ai, sourceFile.fileName, errors, sidebarProvider);
 			break;
 		}
 	} catch (err: any) {

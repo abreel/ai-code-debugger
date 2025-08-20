@@ -2,34 +2,26 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
-// ---------------------------
-// Workspace log path
-// ---------------------------
+/**
+ * Returns the per-workspace log file path.
+ * Creates `.acd-logs` if it doesn't exist.
+ */
 export function getWorkspaceLogFile(): string {
-	const workspaceFolders = vscode.workspace.workspaceFolders;
-	if (!workspaceFolders) return "";
-	const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    // fallback to user home directory if no workspace
+    const homeDir = process.env.HOME || process.env.USERPROFILE || ".";
+    const fallbackDir = path.join(homeDir, ".acd-logs");
+    if (!fs.existsSync(fallbackDir)) {fs.mkdirSync(fallbackDir, { recursive: true });}
+    return path.join(fallbackDir, "extension.log");
+  }
 
-	// Ensure .vscode folder exists
-	const vscodeDir = path.join(workspaceRoot, ".vscode");
-	if (!fs.existsSync(vscodeDir)) {
-		fs.mkdirSync(vscodeDir, { recursive: true });
-	}
+  const rootPath = workspaceFolders[0].uri.fsPath;
+  const logDir = path.join(rootPath, ".acd-logs");
 
-	// Ensure .gitignore ignores it
-	const gitignorePath = path.join(workspaceRoot, ".gitignore");
-	try {
-		if (fs.existsSync(gitignorePath)) {
-			const content = fs.readFileSync(gitignorePath, "utf8");
-			if (!content.includes("ts-error-logs.json")) {
-				fs.appendFileSync(gitignorePath, "\n.vscode/ts-error-logs.json\n");
-			}
-		} else {
-			fs.writeFileSync(gitignorePath, ".vscode/ts-error-logs.json\n");
-		}
-	} catch (err) {
-		console.error("Could not update .gitignore:", err);
-	}
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
 
-	return path.join(vscodeDir, "ts-error-logs.json");
+  return path.join(logDir, "extension.log");
 }

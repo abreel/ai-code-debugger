@@ -68,6 +68,7 @@ export async function runFix(sidebarProvider?: GeminiSidebarProvider): Promise<v
 			});
 
 			await sendToGemini(ai, sourceFile.fileName, errors, sidebarProvider);
+			break;
 		}
 	} catch (err: any) {
 		const errMsg = `🛑 Stopped due to Gemini error: ${err.message}`;

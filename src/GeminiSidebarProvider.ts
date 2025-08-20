@@ -5,7 +5,7 @@ import { showFullPath, logFilePath } from "./config";
 import { TsError } from "./TsError";
 
 // ---------------------------
-// Sidebar Provider (Improved)
+// Sidebar Provider (With Dividers)
 // ---------------------------
 export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined> = new vscode.EventEmitter();
@@ -28,49 +28,43 @@ export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.Tre
 		return element;
 	}
 
+	// Helper: Create a divider row
+	private createDivider(): vscode.TreeItem {
+		const divider = new vscode.TreeItem("━━━━━━━━━━━━━━━━━━━━", vscode.TreeItemCollapsibleState.None);
+		divider.command = undefined;
+		divider.tooltip = undefined;
+		divider.iconPath = undefined; // no icon
+		return divider;
+	}
+
 	getChildren(element?: vscode.TreeItem): vscode.TreeItem[] {
 		const items: vscode.TreeItem[] = [];
 
 		// Root level
 		if (!element) {
-			// --- Controls ---
-			const controls = new vscode.TreeItem("▶ Controls", vscode.TreeItemCollapsibleState.Expanded);
-			controls.iconPath = new vscode.ThemeIcon("gear");
-			(controls as any).controls = true;
-			items.push(controls);
+			// --- Status ---
+			const statusItem = new vscode.TreeItem(
+				this.running ? "Status: 🟢 Running" : "Status: Idle",
+				vscode.TreeItemCollapsibleState.None
+			);
+			statusItem.iconPath = new vscode.ThemeIcon(this.running ? "debug-start" : "debug-stop");
+			items.push(statusItem);
+
+			items.push(this.createDivider()); // divider
 
 			// --- Summary ---
-			const summary = new vscode.TreeItem("📊 Summary", vscode.TreeItemCollapsibleState.Expanded);
+			const summary = new vscode.TreeItem("Summary", vscode.TreeItemCollapsibleState.Expanded);
 			summary.iconPath = new vscode.ThemeIcon("graph");
 			(summary as any).summary = true;
 			items.push(summary);
 
+			items.push(this.createDivider()); // divider
+
 			// --- Files with Errors ---
-			const filesGroup = new vscode.TreeItem("📂 Errors by File", vscode.TreeItemCollapsibleState.Expanded);
+			const filesGroup = new vscode.TreeItem("Errors by File", vscode.TreeItemCollapsibleState.Expanded);
 			filesGroup.iconPath = new vscode.ThemeIcon("folder");
 			(filesGroup as any).filesGroup = true;
 			items.push(filesGroup);
-		}
-
-		// Controls section
-		else if ((element as any).controls) {
-			const runItem = new vscode.TreeItem(this.running ? "Stop Fix" : "Start Fix", vscode.TreeItemCollapsibleState.None);
-			runItem.iconPath = new vscode.ThemeIcon(this.running ? "debug-stop" : "play-circle");
-			runItem.command = { command: this.running ? "fixTsErrors.stop" : "fixTsErrors.run", title: "Toggle Run" };
-
-			const clearItem = new vscode.TreeItem("🗑️ Clear Logs", vscode.TreeItemCollapsibleState.None);
-			clearItem.command = { command: "fixTsErrors.clearLogs", title: "Clear Logs" };
-			clearItem.iconPath = new vscode.ThemeIcon("trash");
-
-			const exportItem = new vscode.TreeItem("📤 Export Logs (Markdown)", vscode.TreeItemCollapsibleState.None);
-			exportItem.command = { command: "fixTsErrors.exportLogs", title: "Export Logs" };
-			exportItem.iconPath = new vscode.ThemeIcon("export");
-
-			const togglePathItem = new vscode.TreeItem(showFullPath ? "Hide Full Paths" : "Show Full Paths", vscode.TreeItemCollapsibleState.None);
-			togglePathItem.command = { command: "fixTsErrors.togglePathDisplay", title: "Toggle Path Display" };
-			togglePathItem.iconPath = new vscode.ThemeIcon("symbol-file");
-
-			return [runItem, clearItem, exportItem, togglePathItem];
 		}
 
 		// Summary section
@@ -85,8 +79,8 @@ export class GeminiSidebarProvider implements vscode.TreeDataProvider<vscode.Tre
 			return [
 				new vscode.TreeItem(`Files: ${filesCount}`),
 				new vscode.TreeItem(`Total Errors: ${data.length}`),
-				new vscode.TreeItem(`✅ Fixed: ${fixedCount}`),
-				new vscode.TreeItem(`⚠️ Unfixed: ${unfixedCount}`)
+				new vscode.TreeItem(`Fixed: ${fixedCount}`),
+				new vscode.TreeItem(`Unfixed: ${unfixedCount}`)
 			];
 		}
 

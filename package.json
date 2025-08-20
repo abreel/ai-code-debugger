@@ -15,43 +15,58 @@
     "commands": [
       {
         "command": "fixTsErrors.run",
-        "title": "ACD: Fix TypeScript Errors with Gemini"
+        "title": "ACD: Fix TypeScript Errors with Gemini",
+        "icon": {
+          "light": "resources/icons/run.svg",
+          "dark": "resources/icons/run.svg"
+        }
+      },
+      {
+        "command": "fixTsErrors.stop",
+        "title": "ACD: Stop Debugging",
+        "icon": {
+          "light": "resources/icons/stop.svg",
+          "dark": "resources/icons/stop.svg"
+        }
+      },
+      {
+        "command": "fixTsErrors.clearLogs",
+        "title": "ACD: Clear Logs",
+        "icon": {
+          "light": "resources/icons/clear.svg",
+          "dark": "resources/icons/clear.svg"
+        }
+      },
+      {
+        "command": "fixTsErrors.exportLogs",
+        "title": "ACD: Export Logs",
+        "icon": {
+          "light": "resources/icons/export.svg",
+          "dark": "resources/icons/export.svg"
+        }
       }
     ],
-    "configuration": {
-      "title": "Ai Code Debugger (ACD)",
-      "properties": {
-        "aiCodeDebugger.geminiApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Your Gemini API Key used for debugging with Gemini models."
+    "menus": {
+      "view/title": [
+        {
+          "command": "fixTsErrors.run",
+          "when": "view == geminiLogs",
+          "group": "navigation"
         },
-        "aiCodeDebugger.geminiNotifications": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "always",
-            "never"
-          ],
-          "default": "auto",
-          "description": "Control notifications and auto-open output channel: 'auto', 'always', 'never'."
-        }
-      }
-    },
-    "viewsContainers": {
-      "activitybar": [
         {
-          "id": "geminiSidebar",
-          "title": "Ai Code Debugger (ACD)",
-          "icon": "resources/icon.png"
-        }
-      ]
-    },
-    "views": {
-      "geminiSidebar": [
+          "command": "fixTsErrors.stop",
+          "when": "view == geminiLogs",
+          "group": "navigation"
+        },
         {
-          "id": "geminiLogs",
-          "name": "Logs"
+          "command": "fixTsErrors.clearLogs",
+          "when": "view == geminiLogs",
+          "group": "navigation"
+        },
+        {
+          "command": "fixTsErrors.exportLogs",
+          "when": "view == geminiLogs",
+          "group": "navigation"
         }
       ]
     }
